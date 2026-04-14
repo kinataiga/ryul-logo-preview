@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>section / ryul — Logo Preview Tool</title>
+<style>
+  :root {
+    --bg: #1a1a1a;
+    --panel: #242424;
+    --border: #333;
+    --text: #e0e0e0;
+    --text-dim: #888;
+    --accent: #6e8efb;
+    --accent-hover: #5a7bf0;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  .header h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.05em; }
+  .header .shortcuts { font-size: 11px; color: var(--text-dim); }
+  .header .shortcuts kbd {
+    background: #333; border: 1px solid #444; border-radius: 3px;
+    padding: 1px 5px; font-family: inherit; font-size: 10px;
+  }
+
+  /* Layout */
+  .app { display: flex; height: calc(100vh - 53px); }
+
+  /* Sidebar */
+  .sidebar {
+    width: 280px; min-width: 280px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex; flex-direction: column;
+  }
+  .sidebar-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-section h3 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--text-dim); margin-bottom: 12px;
+  }
+
+  /* Logo thumbnails */
+  .logo-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .logo-thumb {
+    aspect-ratio: 1; border: 2px solid transparent; border-radius: 6px;
+    background: #fff; cursor: pointer; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    padding: 4px; transition: border-color 0.15s, transform 0.1s; position: relative;
+  }
+  .logo-thumb:hover { border-color: #555; transform: scale(1.05); }
+  .logo-thumb.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .logo-thumb img { width: 100%; height: 100%; object-fit: contain; }
+  .logo-thumb .num {
+    position: absolute; top: 2px; left: 4px;
+    font-size: 9px; font-weight: 700; color: #999;
+  }
+
+  /* Controls */
+  .control-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  }
+  .control-row label {
+    font-size: 12px; width: 54px; flex-shrink: 0; color: var(--text-dim);
+  }
+  .control-row input[type="range"] { flex: 1; accent-color: var(--accent); height: 4px; }
+
+  /* Editable value display */
+  .value-display {
+    font-size: 11px; width: 48px; text-align: right; color: var(--text-dim);
+    font-variant-numeric: tabular-nums; cursor: pointer; padding: 2px 4px;
+    border: 1px solid transparent; border-radius: 3px;
+    background: transparent; transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .value-display:hover { border-color: #555; background: #2a2a2a; }
+
+  /* Inline number input (shown on click) */
+  .value-input {
+    font-size: 11px; width: 48px; text-align: right; color: var(--text);
+    font-variant-numeric: tabular-nums; padding: 2px 4px;
+    border: 1px solid var(--accent); border-radius: 3px;
+    background: #1a1a1a; outline: none; flex-shrink: 0;
+    font-family: inherit;
+  }
+  .value-input:focus { box-shadow: 0 0 0 1px var(--accent); }
+
+  /* Batch checkbox */
+  .batch-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px; padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .batch-row input[type="checkbox"] { accent-color: var(--accent); }
+  .batch-row label {
+    font-size: 12px; color: var(--text); cursor: pointer; width: auto;
+  }
+  .batch-indicator {
+    font-size: 10px; color: var(--accent); margin-left: auto;
+    opacity: 0; transition: opacity 0.15s;
+  }
+  .batch-indicator.show { opacity: 1; }
+
+  /* Current logo indicator in adjust section */
+  .current-logo-label {
+    font-size: 12px; color: var(--accent); margin-bottom: 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .current-logo-label .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); display: inline-block;
+  }
+
+  /* Buttons */
+  .btn-row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .btn {
+    padding: 6px 12px; border: 1px solid var(--border); border-radius: 4px;
+    background: transparent; color: var(--text); font-size: 11px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .btn-reset {
+    width: 100%; margin-top: 8px; padding: 8px;
+    border: 1px solid var(--border); border-radius: 4px;
+    background: transparent; color: var(--text-dim); font-size: 11px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-reset:hover { background: #333; color: var(--text); }
+
+  /* Mode tabs */
+  .mode-tab {
+    flex: 1; padding: 8px; border: none; background: transparent;
+    color: var(--text-dim); font-size: 12px; cursor: pointer;
+    border-bottom: 2px solid transparent; transition: all 0.15s;
+  }
+  .mode-tab:hover { color: var(--text); }
+  .mode-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Main area */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Preview */
+  .preview-wrapper {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 24px; gap: 24px; overflow: hidden;
+  }
+  .preview-box {
+    position: relative; display: inline-block;
+    max-width: 100%; max-height: 100%; line-height: 0; user-select: none;
+  }
+  .preview-box img.base {
+    max-width: 100%; max-height: calc(100vh - 120px); display: block; border-radius: 4px;
+  }
+  .logo-overlay {
+    position: absolute; cursor: move; pointer-events: auto; image-rendering: auto;
+  }
+  .logo-overlay img {
+    width: 100%; height: 100%; display: block; pointer-events: none;
+  }
+
+  /* Compare mode */
+  .preview-wrapper.compare {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px;
+  }
+  .compare-panel {
+    position: relative; display: flex; flex-direction: column;
+    align-items: center; gap: 8px;
+  }
+  .compare-panel .compare-label {
+    font-size: 12px; color: var(--text-dim);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .compare-panel .compare-label select {
+    background: var(--panel); border: 1px solid var(--border);
+    color: var(--text); padding: 4px 8px; border-radius: 4px; font-size: 12px;
+  }
+  .compare-panel .preview-box img.base { max-height: calc(100vh - 160px); }
+
+  /* Status bar */
+  .status-bar {
+    padding: 8px 24px; border-top: 1px solid var(--border);
+    background: var(--panel); font-size: 11px; color: var(--text-dim);
+    display: flex; justify-content: space-between;
+  }
+
+  /* Drag hint */
+  .drag-hint {
+    position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.7); color: #fff; padding: 4px 10px;
+    border-radius: 4px; font-size: 11px; pointer-events: none;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .preview-box:hover .drag-hint { opacity: 1; }
+  .preview-box.dragging .drag-hint { opacity: 0; }
+
+  .compare-select { display: none; }
+  .compare-select.show { display: block; }
+
+  .logo-overlay.inverted img { filter: invert(1); }
+
+  /* Mirror / Metallic effects — 添付画像のPロゴ風の静的な鏡面グラデーション */
+
+  /* Silver: 上が明るいシルバー、下に向かってダークに。鏡面金属感 */
+  .logo-overlay.mirror-silver img {
+    filter: invert(1);
+    -webkit-mask-image: linear-gradient(
+      180deg,
+      rgba(0,0,0,1) 0%,
+      rgba(0,0,0,0.9) 30%,
+      rgba(0,0,0,0.5) 60%,
+      rgba(0,0,0,0.3) 100%
+    );
+    mask-image: linear-gradient(
+      180deg,
+      rgba(0,0,0,1) 0%,
+      rgba(0,0,0,0.9) 30%,
+      rgba(0,0,0,0.5) 60%,
+      rgba(0,0,0,0.3) 100%
+    );
+  }
+
+  /* Black: マットブラック上の鏡面ブラック。光沢差だけで浮かぶ */
+  .logo-overlay.mirror-black img {
+    filter: brightness(0.2) contrast(1.4);
+    -webkit-mask-image: linear-gradient(
+      170deg,
+      rgba(0,0,0,0.8) 0%,
+      rgba(0,0,0,0.5) 40%,
+      rgba(0,0,0,0.3) 70%,
+      rgba(0,0,0,0.5) 100%
+    );
+    mask-image: linear-gradient(
+      170deg,
+      rgba(0,0,0,0.8) 0%,
+      rgba(0,0,0,0.5) 40%,
+      rgba(0,0,0,0.3) 70%,
+      rgba(0,0,0,0.5) 100%
+    );
+  }
+
+  /* Chrome: 添付画像に最も近い。上から光が当たった鏡面クローム */
+  .logo-overlay.mirror-chrome img {
+    filter: invert(1) brightness(1.8) contrast(0.9);
+    -webkit-mask-image: linear-gradient(
+      175deg,
+      rgba(0,0,0,1) 0%,
+      rgba(0,0,0,1) 15%,
+      rgba(0,0,0,0.4) 40%,
+      rgba(0,0,0,0.7) 55%,
+      rgba(0,0,0,0.3) 75%,
+      rgba(0,0,0,0.5) 100%
+    );
+    mask-image: linear-gradient(
+      175deg,
+      rgba(0,0,0,1) 0%,
+      rgba(0,0,0,1) 15%,
+      rgba(0,0,0,0.4) 40%,
+      rgba(0,0,0,0.7) 55%,
+      rgba(0,0,0,0.3) 75%,
+      rgba(0,0,0,0.5) 100%
+    );
+  }
+
+  /* Engrave: 彫り込み刻印。うっすら見える */
+  .logo-overlay.mirror-engrave img {
+    filter: brightness(0.12) contrast(1.8);
+    opacity: 0.45 !important;
+    -webkit-mask-image: linear-gradient(
+      180deg,
+      rgba(0,0,0,0.7) 0%,
+      rgba(0,0,0,0.4) 50%,
+      rgba(0,0,0,0.6) 100%
+    );
+    mask-image: linear-gradient(
+      180deg,
+      rgba(0,0,0,0.7) 0%,
+      rgba(0,0,0,0.4) 50%,
+      rgba(0,0,0,0.6) 100%
+    );
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>section / ryul — Logo Preview</h1>
+  <div class="shortcuts">
+    <kbd>&larr;</kbd><kbd>&rarr;</kbd> 切り替え &nbsp;
+    <kbd>1</kbd>-<kbd>8</kbd> ロゴ選択 &nbsp;
+    <kbd>R</kbd> リセット &nbsp;
+    <kbd>C</kbd> 比較モード &nbsp;
+    <kbd>I</kbd> 反転
+  </div>
+</div>
+
+<div class="app">
+  <div class="sidebar">
+    <!-- Mode -->
+    <div style="display:flex; border-bottom:1px solid var(--border);">
+      <button class="mode-tab active" data-mode="single">Single</button>
+      <button class="mode-tab" data-mode="compare">Compare</button>
+    </div>
+
+    <!-- Logo select -->
+    <div class="sidebar-section">
+      <h3>Logo Select</h3>
+      <div class="logo-grid" id="logoGrid"></div>
+    </div>
+
+    <!-- Compare select -->
+    <div class="sidebar-section compare-select" id="compareSection">
+      <h3>Compare (Right)</h3>
+      <div class="logo-grid" id="logoGridCompare"></div>
+    </div>
+
+    <!-- Position & Size -->
+    <div class="sidebar-section">
+      <h3>Adjust</h3>
+      <div class="current-logo-label">
+        <span class="dot"></span>
+        <span id="adjustLabel">Logo 1: section A-1</span>
+      </div>
+
+      <div class="batch-row">
+        <input type="checkbox" id="batchMode">
+        <label for="batchMode">All logos (batch)</label>
+        <span class="batch-indicator" id="batchIndicator">BATCH</span>
+      </div>
+
+      <div class="control-row">
+        <label>X</label>
+        <input type="range" id="posX" min="-50" max="100" value="55" step="0.5">
+        <span class="value-display" id="posXVal" data-key="x" data-unit="%" data-min="-50" data-max="100">55%</span>
+      </div>
+      <div class="control-row">
+        <label>Y</label>
+        <input type="range" id="posY" min="-50" max="100" value="30" step="0.5">
+        <span class="value-display" id="posYVal" data-key="y" data-unit="%" data-min="-50" data-max="100">30%</span>
+      </div>
+      <div class="control-row">
+        <label>Size</label>
+        <input type="range" id="logoSize" min="3" max="40" value="14" step="0.5">
+        <span class="value-display" id="logoSizeVal" data-key="size" data-unit="%" data-min="3" data-max="40">14%</span>
+      </div>
+      <div class="control-row">
+        <label>Rotate</label>
+        <input type="range" id="logoRotate" min="-180" max="180" value="-32" step="1">
+        <span class="value-display" id="logoRotateVal" data-key="rotate" data-unit="°" data-min="-180" data-max="180">-32°</span>
+      </div>
+      <div class="control-row">
+        <label>Opacity</label>
+        <input type="range" id="logoOpacity" min="0" max="100" value="100" step="1">
+        <span class="value-display" id="logoOpacityVal" data-key="opacity" data-unit="%" data-min="0" data-max="100">100%</span>
+      </div>
+      <button class="btn-reset" id="resetBtn">Reset Current</button>
+      <button class="btn-reset" id="resetAllBtn" style="margin-top:4px;">Reset All</button>
+    </div>
+
+    <!-- Share -->
+    <div class="sidebar-section">
+      <button class="btn-reset" id="shareBtn" style="background:var(--accent);color:#fff;border-color:var(--accent);">Share URL をコピー</button>
+      <div id="shareMsg" style="font-size:11px;color:var(--accent);margin-top:6px;opacity:0;transition:opacity 0.3s;"></div>
+    </div>
+
+    <!-- Background -->
+    <div class="sidebar-section">
+      <h3>Background</h3>
+      <div class="btn-row">
+        <button class="btn" data-bg="#1a1a1a">Dark</button>
+        <button class="btn active" data-bg="#b0b0b0">Gray</button>
+        <button class="btn" data-bg="#ffffff">White</button>
+        <button class="btn" data-bg="#000000">Black</button>
+      </div>
+    </div>
+
+    <!-- Logo color / effect -->
+    <div class="sidebar-section">
+      <h3>Logo Effect</h3>
+      <div class="btn-row">
+        <button class="btn active" data-effect="normal">Original</button>
+        <button class="btn" data-effect="invert">White</button>
+        <button class="btn" data-effect="mirror-silver">Silver</button>
+        <button class="btn" data-effect="mirror-black">Black</button>
+        <button class="btn" data-effect="mirror-chrome">Chrome</button>
+        <button class="btn" data-effect="mirror-engrave">Engrave</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="preview-wrapper" id="singleView">
+      <div class="preview-box" id="previewBox">
+        <img class="base" id="baseImg" src="images/iron-base.png" alt="Hair Iron">
+        <div class="logo-overlay" id="logoOverlay">
+          <img id="logoImg" src="" alt="Logo">
+        </div>
+        <div class="drag-hint">Drag to move logo</div>
+      </div>
+    </div>
+
+    <div class="preview-wrapper compare" id="compareView" style="display:none;">
+      <div class="compare-panel">
+        <div class="compare-label">
+          Left: <select id="compareLeftSelect"></select>
+        </div>
+        <div class="preview-box" id="compareLeftBox">
+          <img class="base" src="images/iron-base.png" alt="Hair Iron">
+          <div class="logo-overlay compare-logo" id="compareLeftLogo">
+            <img src="" alt="Logo">
+          </div>
+        </div>
+      </div>
+      <div class="compare-panel">
+        <div class="compare-label">
+          Right: <select id="compareRightSelect"></select>
+        </div>
+        <div class="preview-box" id="compareRightBox">
+          <img class="base" src="images/iron-base.png" alt="Hair Iron">
+          <div class="logo-overlay compare-logo" id="compareRightLogo">
+            <img src="" alt="Logo">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <span id="statusLeft">Logo 1 selected</span>
+      <span id="statusRight">Drag logo to reposition | Scroll to resize | Click values to edit</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Config ───
+const LOGO_COUNT = 11;
+const LOGO_NAMES = [
+  'section A-1', 'section A-2',
+  'section B-1', 'section B-2',
+  'ryul C-1', 'ryul D-1',
+  'ryul E-1', 'ryul E-2',
+  'ryul F-1', 'ryul F-2', 'ryul F-3'
+];
+
+const DEFAULTS = { x: 73.5, y: 62.5, size: 7.5, rotate: 1, opacity: 100 };
+// All logos now share identical default position/size for consistent comparison
+
+// Per-logo adjusted defaults from kina's tuning
+const LOGO_DEFAULTS = {
+  1: { x: 73.5, y: 62.5, size: 7.5, rotate: 1, opacity: 100 },
+  2: { x: 73.5, y: 62.5, size: 7.5, rotate: 1, opacity: 100 },
+  3: { x: 73.5, y: 62.5, size: 7.5, rotate: 1, opacity: 100 },
+  4: { x: 73.5, y: 62.5, size: 7.5, rotate: 1, opacity: 100 },
+  5: { x: 73.5, y: 62.5, size: 7.5, rotate: 1, opacity: 100 },
+  6: { x: 73.5, y: 62.5, size: 7.5, rotate: 1, opacity: 100 },
+  7: { x: 73.5, y: 62.5, size: 7.5, rotate: 1, opacity: 100 },
+  8: { x: 73.5, y: 62.5, size: 7.5, rotate: 1, opacity: 100 },
+  9: { x: 73.5, y: 62.5, size: 7.5, rotate: 1, opacity: 100 },
+  10: { x: 73.5, y: 62.5, size: 7.5, rotate: 1, opacity: 100 },
+  11: { x: 73.5, y: 62.5, size: 7.5, rotate: 1, opacity: 100 }
+};
+
+// Load state: URL params > localStorage > LOGO_DEFAULTS
+const STORAGE_KEY = 'ryul-logo-preview-states';
+const logoStates = {};
+
+function parseURLStates() {
+  try {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return null;
+    return JSON.parse(decodeURIComponent(hash));
+  } catch(e) { return null; }
+}
+
+const urlStates = parseURLStates();
+const saved = urlStates || (() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(e) { return null; } })();
+for (let i = 1; i <= LOGO_COUNT; i++) {
+  logoStates[i] = (saved && saved[i]) ? { ...saved[i] } : { ...LOGO_DEFAULTS[i] };
+}
+
+function saveStates() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(logoStates)); } catch(e) {}
+}
+
+function getShareURL() {
+  const base = window.location.origin + window.location.pathname;
+  const hash = encodeURIComponent(JSON.stringify(logoStates));
+  return base + '#' + hash;
+}
+
+let current = 1;
+let compareRight = 2;
+let mode = 'single';
+let bg = '#b0b0b0';
+let inverted = false;
+let logoEffect = 'normal';
+let batchMode = false;
+
+const $ = id => document.getElementById(id);
+
+function logoSrc(n) { return `images/logo-${n}.png`; }
+
+function cur() { return logoStates[current]; }
+
+// ─── Build UI ───
+function buildGrid(container, onClick) {
+  container.innerHTML = '';
+  for (let i = 1; i <= LOGO_COUNT; i++) {
+    const div = document.createElement('div');
+    div.className = 'logo-thumb';
+    div.dataset.logo = i;
+    div.innerHTML = `<span class="num">${i}</span><img src="${logoSrc(i)}" alt="Logo ${i}">`;
+    div.addEventListener('click', () => onClick(i));
+    container.appendChild(div);
+  }
+}
+
+function buildSelect(sel, selected) {
+  sel.innerHTML = '';
+  for (let i = 1; i <= LOGO_COUNT; i++) {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = `${i}. ${LOGO_NAMES[i-1]}`;
+    if (i === selected) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+// ─── Apply overlay to a specific element with a specific logo's state ───
+function applyOverlay(el, st) {
+  el.style.left = st.x + '%';
+  el.style.top = st.y + '%';
+  el.style.width = st.size + '%';
+  el.style.transform = `translate(-50%, -50%) rotate(${st.rotate}deg)`;
+  el.style.opacity = st.opacity / 100;
+  // Remove all effect classes
+  el.classList.remove('inverted', 'mirror-silver', 'mirror-black', 'mirror-chrome', 'mirror-engrave');
+  if (logoEffect === 'invert') el.classList.add('inverted');
+  else if (logoEffect !== 'normal') el.classList.add(logoEffect);
+}
+
+function updateSingleOverlay() {
+  applyOverlay($('logoOverlay'), cur());
+}
+
+function updateCompareOverlays() {
+  applyOverlay($('compareLeftLogo'), logoStates[current]);
+  applyOverlay($('compareRightLogo'), logoStates[compareRight]);
+}
+
+function updateAllOverlays() {
+  updateSingleOverlay();
+  if (mode === 'compare') updateCompareOverlays();
+}
+
+// ─── Sync sliders/values with current logo state ───
+function syncUI() {
+  const st = cur();
+  $('posX').value = st.x;       $('posXVal').textContent = st.x + '%';
+  $('posY').value = st.y;       $('posYVal').textContent = st.y + '%';
+  $('logoSize').value = st.size; $('logoSizeVal').textContent = st.size + '%';
+  $('logoRotate').value = st.rotate; $('logoRotateVal').textContent = st.rotate + '°';
+  $('logoOpacity').value = st.opacity; $('logoOpacityVal').textContent = st.opacity + '%';
+  $('adjustLabel').textContent = `Logo ${current}: ${LOGO_NAMES[current-1]}`;
+}
+
+// ─── Set a property, respecting batch mode ───
+function setProp(key, value) {
+  if (batchMode) {
+    for (let i = 1; i <= LOGO_COUNT; i++) {
+      logoStates[i][key] = value;
+    }
+  } else {
+    cur()[key] = value;
+  }
+  updateAllOverlays();
+  saveStates();
+}
+
+// ─── Select logo ───
+function selectLogo(n) {
+  current = n;
+  $('logoImg').src = logoSrc(n);
+  document.querySelectorAll('#logoGrid .logo-thumb').forEach(el => {
+    el.classList.toggle('active', parseInt(el.dataset.logo) === n);
+  });
+  $('statusLeft').textContent = `Logo ${n}: ${LOGO_NAMES[n-1]}`;
+  syncUI();
+  updateAllOverlays();
+
+  if (mode === 'compare') {
+    $('compareLeftSelect').value = n;
+    $('compareLeftLogo').querySelector('img').src = logoSrc(n);
+  }
+}
+
+function selectCompareRight(n) {
+  compareRight = n;
+  document.querySelectorAll('#logoGridCompare .logo-thumb').forEach(el => {
+    el.classList.toggle('active', parseInt(el.dataset.logo) === n);
+  });
+  $('compareRightSelect').value = n;
+  $('compareRightLogo').querySelector('img').src = logoSrc(n);
+  updateCompareOverlays();
+}
+
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.mode-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.mode === m)
+  );
+  $('compareSection').classList.toggle('show', m === 'compare');
+  if (m === 'single') {
+    $('singleView').style.display = '';
+    $('compareView').style.display = 'none';
+  } else {
+    $('singleView').style.display = 'none';
+    $('compareView').style.display = '';
+    $('compareLeftLogo').querySelector('img').src = logoSrc(current);
+    $('compareRightLogo').querySelector('img').src = logoSrc(compareRight);
+    $('compareLeftSelect').value = current;
+    $('compareRightSelect').value = compareRight;
+    updateCompareOverlays();
+  }
+  updateAllOverlays();
+}
+
+function setBg(color) {
+  bg = color;
+  document.querySelectorAll('[data-bg]').forEach(b =>
+    b.classList.toggle('active', b.dataset.bg === color)
+  );
+  $('singleView').style.background = color;
+  $('compareView').style.background = color;
+}
+
+// ─── Editable value click ───
+document.querySelectorAll('.value-display').forEach(span => {
+  span.addEventListener('click', () => {
+    const key = span.dataset.key;
+    const unit = span.dataset.unit;
+    const min = parseFloat(span.dataset.min);
+    const max = parseFloat(span.dataset.max);
+    const currentVal = cur()[key];
+
+    // Replace span with input
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'value-input';
+    input.value = currentVal;
+    input.min = min;
+    input.max = max;
+    input.step = key === 'rotate' ? 1 : 0.5;
+    span.style.display = 'none';
+    span.parentElement.appendChild(input);
+    input.focus();
+    input.select();
+
+    function commit() {
+      let val = parseFloat(input.value);
+      if (isNaN(val)) val = currentVal;
+      val = Math.max(min, Math.min(max, val));
+      setProp(key, val);
+      syncUI();
+      span.style.display = '';
+      input.remove();
+    }
+
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      if (e.key === 'Escape') {
+        span.style.display = '';
+        input.remove();
+      }
+    });
+  });
+});
+
+// ─── Init ───
+buildGrid($('logoGrid'), selectLogo);
+buildGrid($('logoGridCompare'), selectCompareRight);
+buildSelect($('compareLeftSelect'), 1);
+buildSelect($('compareRightSelect'), 2);
+
+selectLogo(1);
+selectCompareRight(2);
+syncUI();
+updateAllOverlays();
+setBg('#b0b0b0');
+
+// ─── Batch mode checkbox ───
+$('batchMode').addEventListener('change', e => {
+  batchMode = e.target.checked;
+  $('batchIndicator').classList.toggle('show', batchMode);
+});
+
+// ─── Slider events ───
+const sliders = [
+  ['posX', 'posXVal', 'x', '%'],
+  ['posY', 'posYVal', 'y', '%'],
+  ['logoSize', 'logoSizeVal', 'size', '%'],
+  ['logoRotate', 'logoRotateVal', 'rotate', '°'],
+  ['logoOpacity', 'logoOpacityVal', 'opacity', '%']
+];
+
+sliders.forEach(([id, valId, key, unit]) => {
+  $(id).addEventListener('input', e => {
+    const val = parseFloat(e.target.value);
+    setProp(key, val);
+    $(valId).textContent = val + unit;
+  });
+});
+
+// ─── Reset ───
+$('resetBtn').addEventListener('click', () => {
+  Object.assign(cur(), { ...LOGO_DEFAULTS[current] });
+  syncUI();
+  updateAllOverlays();
+  saveStates();
+});
+
+$('resetAllBtn').addEventListener('click', () => {
+  for (let i = 1; i <= LOGO_COUNT; i++) {
+    Object.assign(logoStates[i], { ...LOGO_DEFAULTS[i] });
+  }
+  syncUI();
+  updateAllOverlays();
+  saveStates();
+});
+
+// ─── Share URL ───
+$('shareBtn').addEventListener('click', () => {
+  const url = getShareURL();
+  navigator.clipboard.writeText(url).then(() => {
+    const msg = $('shareMsg');
+    msg.textContent = 'URLをクリップボードにコピーしました！';
+    msg.style.opacity = '1';
+    setTimeout(() => { msg.style.opacity = '0'; }, 3000);
+  }).catch(() => {
+    prompt('このURLをコピーしてください:', getShareURL());
+  });
+});
+
+// ─── Background buttons ───
+document.querySelectorAll('[data-bg]').forEach(btn => {
+  btn.addEventListener('click', () => setBg(btn.dataset.bg));
+});
+
+// ─── Mode tabs ───
+document.querySelectorAll('.mode-tab').forEach(tab => {
+  tab.addEventListener('click', () => setMode(tab.dataset.mode));
+});
+
+// ─── Logo effect buttons ───
+document.querySelectorAll('[data-effect]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    logoEffect = btn.dataset.effect;
+    inverted = logoEffect === 'invert';
+    document.querySelectorAll('[data-effect]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    updateAllOverlays();
+  });
+});
+
+// ─── Compare selects ───
+$('compareLeftSelect').addEventListener('change', e => selectLogo(parseInt(e.target.value)));
+$('compareRightSelect').addEventListener('change', e => selectCompareRight(parseInt(e.target.value)));
+
+// ─── Drag ───
+let dragging = false;
+
+function startDrag(e, box, targetLogoNum) {
+  e.preventDefault();
+  dragging = true;
+  box.classList.add('dragging');
+  const rect = box.querySelector('.base').getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const st = logoStates[targetLogoNum];
+  const startData = { x: clientX, y: clientY, origX: st.x, origY: st.y, rect, logoNum: targetLogoNum };
+
+  function onMove(ev) {
+    const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+    const cy = ev.touches ? ev.touches[0].clientY : ev.clientY;
+    const dx = ((cx - startData.x) / startData.rect.width) * 100;
+    const dy = ((cy - startData.y) / startData.rect.height) * 100;
+    const newX = Math.round((startData.origX + dx) * 2) / 2;
+    const newY = Math.round((startData.origY + dy) * 2) / 2;
+
+    if (batchMode) {
+      const diffX = newX - startData.origX;
+      const diffY = newY - startData.origY;
+      for (let i = 1; i <= LOGO_COUNT; i++) {
+        // Apply relative movement for batch
+      }
+      setProp('x', newX);
+      setProp('y', newY);
+    } else {
+      logoStates[startData.logoNum].x = newX;
+      logoStates[startData.logoNum].y = newY;
+    }
+
+    if (startData.logoNum === current) syncUI();
+    updateAllOverlays();
+    saveStates();
+  }
+
+  function onUp() {
+    dragging = false;
+    box.classList.remove('dragging');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onUp);
+  }
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('touchend', onUp);
+}
+
+$('logoOverlay').addEventListener('mousedown', e => startDrag(e, $('previewBox'), current));
+$('logoOverlay').addEventListener('touchstart', e => startDrag(e, $('previewBox'), current), { passive: false });
+
+$('compareLeftLogo').addEventListener('mousedown', e => startDrag(e, $('compareLeftBox'), current));
+$('compareLeftLogo').addEventListener('touchstart', e => startDrag(e, $('compareLeftBox'), current), { passive: false });
+$('compareRightLogo').addEventListener('mousedown', e => startDrag(e, $('compareRightBox'), compareRight));
+$('compareRightLogo').addEventListener('touchstart', e => startDrag(e, $('compareRightBox'), compareRight), { passive: false });
+
+// ─── Scroll to zoom preview image ───
+let previewZoom = 1;
+document.addEventListener('wheel', e => {
+  if (!e.target.closest('.preview-box')) return;
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? -0.05 : 0.05;
+  previewZoom = Math.max(0.5, Math.min(5, previewZoom + delta));
+  document.querySelectorAll('.preview-box').forEach(box => {
+    box.style.transform = `scale(${previewZoom})`;
+    box.style.transformOrigin = 'center center';
+  });
+}, { passive: false });
+
+// ─── Keyboard shortcuts ───
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  const key = e.key;
+
+  if (key >= '1' && key <= '8') { selectLogo(parseInt(key)); return; }
+
+  switch(key) {
+    case 'ArrowLeft':
+      e.preventDefault();
+      selectLogo(current > 1 ? current - 1 : LOGO_COUNT);
+      break;
+    case 'ArrowRight':
+      e.preventDefault();
+      selectLogo(current < LOGO_COUNT ? current + 1 : 1);
+      break;
+    case 'r': case 'R':
+      Object.assign(cur(), { ...DEFAULTS });
+      syncUI(); updateAllOverlays();
+      break;
+    case 'c': case 'C':
+      setMode(mode === 'single' ? 'compare' : 'single');
+      break;
+    case 'i': case 'I':
+      // Cycle through effects: normal → invert → silver → black → chrome → engrave → normal
+      const effects = ['normal', 'invert', 'mirror-silver', 'mirror-black', 'mirror-chrome', 'mirror-engrave'];
+      const idx = effects.indexOf(logoEffect);
+      logoEffect = effects[(idx + 1) % effects.length];
+      inverted = logoEffect === 'invert';
+      document.querySelectorAll('[data-effect]').forEach(b => {
+        b.classList.toggle('active', b.dataset.effect === logoEffect);
+      });
+      updateAllOverlays();
+      break;
+  }
+});
+</script>
+</body>
+</html>
