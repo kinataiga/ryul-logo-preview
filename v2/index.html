@@ -280,27 +280,37 @@
   .compare-select { display: none; }
   .compare-select.show { display: block; }
 
+  /* ─── Effects for WHITE-base logos ───
+     これらのエフェクトは「白ロゴ（透過PNG）」を起点に設計されています。 */
+
+  /* Invert: 白 → 黒（明るい背景用） */
   .logo-overlay.inverted img { filter: invert(1); }
 
-  /* Mirror / Metallic effects */
+  /* Silver: 白ロゴのまま縦グラデーションマスクで磨かれた銀に */
   .logo-overlay.mirror-silver img {
-    filter: invert(1);
+    filter: brightness(0.95) contrast(1.1);
     -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.9) 30%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,0.3) 100%);
     mask-image: linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.9) 30%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,0.3) 100%);
   }
+
+  /* Matte Black: 白を反転して黒へ。斜めマスクで半光沢を演出 */
   .logo-overlay.mirror-black img {
-    filter: brightness(0.2) contrast(1.4);
-    -webkit-mask-image: linear-gradient(170deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.3) 70%, rgba(0,0,0,0.5) 100%);
-    mask-image: linear-gradient(170deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.3) 70%, rgba(0,0,0,0.5) 100%);
+    filter: invert(1);
+    -webkit-mask-image: linear-gradient(170deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.35) 70%, rgba(0,0,0,0.6) 100%);
+    mask-image: linear-gradient(170deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.35) 70%, rgba(0,0,0,0.6) 100%);
   }
+
+  /* Chrome: 白ロゴにハイライト強めの鏡面グラデーションを重ねて明るいクロームに */
   .logo-overlay.mirror-chrome img {
-    filter: invert(1) brightness(1.8) contrast(0.9);
-    -webkit-mask-image: linear-gradient(175deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 15%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0.7) 55%, rgba(0,0,0,0.3) 75%, rgba(0,0,0,0.5) 100%);
-    mask-image: linear-gradient(175deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 15%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0.7) 55%, rgba(0,0,0,0.3) 75%, rgba(0,0,0,0.5) 100%);
+    filter: brightness(1.05) contrast(1.2);
+    -webkit-mask-image: linear-gradient(175deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 15%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0.75) 55%, rgba(0,0,0,0.3) 75%, rgba(0,0,0,0.55) 100%);
+    mask-image: linear-gradient(175deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 15%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0.75) 55%, rgba(0,0,0,0.3) 75%, rgba(0,0,0,0.55) 100%);
   }
+
+  /* Engrave: 白を暗くしてうっすら彫り込んだような陰影に */
   .logo-overlay.mirror-engrave img {
-    filter: brightness(0.12) contrast(1.8);
-    opacity: 0.45 !important;
+    filter: brightness(0.22) contrast(1.3);
+    opacity: 0.6 !important;
     -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.6) 100%);
     mask-image: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.6) 100%);
   }
@@ -478,9 +488,9 @@
       <h3>Logo Effect</h3>
       <div class="btn-row">
         <button class="btn active" data-effect="normal">Original</button>
-        <button class="btn" data-effect="invert">White</button>
+        <button class="btn" data-effect="invert">Black</button>
         <button class="btn" data-effect="mirror-silver">Silver</button>
-        <button class="btn" data-effect="mirror-black">Black</button>
+        <button class="btn" data-effect="mirror-black">Matte Black</button>
         <button class="btn" data-effect="mirror-chrome">Chrome</button>
         <button class="btn" data-effect="mirror-engrave">Engrave</button>
       </div>
