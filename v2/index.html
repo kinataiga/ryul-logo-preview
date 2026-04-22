@@ -468,8 +468,9 @@
 
     <div class="sidebar-section">
       <button class="btn-reset" id="shareBtn" style="background:var(--accent);color:#fff;border-color:var(--accent);">Share URL をコピー</button>
-      <button class="btn-reset" id="exportCaptionsBtn" style="margin-top:6px;">説明文をエクスポート</button>
-      <button class="btn-reset" id="importCaptionsBtn" style="margin-top:4px;">説明文をインポート</button>
+      <button class="btn-reset" id="exportDefaultsBtn" style="margin-top:6px;background:#2a4a2a;color:#c8e6c9;border-color:#3a6a3a;">現在の状態をデフォルトに書き出す</button>
+      <button class="btn-reset" id="exportCaptionsBtn" style="margin-top:4px;">説明文だけエクスポート</button>
+      <button class="btn-reset" id="importCaptionsBtn" style="margin-top:4px;">説明文だけインポート</button>
       <input type="file" id="captionsFileInput" accept=".json" style="display:none;">
       <div id="shareMsg" style="font-size:11px;color:var(--accent);margin-top:6px;opacity:0;transition:opacity 0.3s;"></div>
     </div>
@@ -585,10 +586,13 @@ const LOGO_NAMES = [
 ];
 const LOGO_COUNT = LOGO_FILES.length;
 
-const DEFAULTS = { x: 73.5, y: 62.5, size: 7.5, rotate: 1, opacity: 100 };
-const LOGO_DEFAULTS = {};
+// ─── Defaults ───
+// FALLBACK_DEFAULTS: 最終フォールバック値。通常は defaults.json から取得した値がこれを上書き。
+const FALLBACK_DEFAULTS = { x: 73.5, y: 62.5, size: 7.5, rotate: 1, opacity: 100 };
+const LOGO_DEFAULTS = {};  // ← init() で defaults.json の値に更新される
+let teamCaptions = {};     // ← init() で defaults.json の値に更新される
 for (let i = 1; i <= LOGO_COUNT; i++) {
-  LOGO_DEFAULTS[i] = { ...DEFAULTS };
+  LOGO_DEFAULTS[i] = { ...FALLBACK_DEFAULTS };
 }
 
 // ─── Storage keys ───
@@ -604,25 +608,10 @@ function parseURLData() {
     const hash = window.location.hash.slice(1);
     if (!hash) return null;
     const parsed = JSON.parse(decodeURIComponent(hash));
-    // New format: { s: states, c: captions }
     if (parsed && typeof parsed === 'object' && 's' in parsed) return parsed;
-    // Legacy: states directly
     return { s: parsed, c: null };
   } catch(e) { return null; }
 }
-
-const urlData = parseURLData();
-const savedStates = (urlData && urlData.s) || (() => {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(e) { return null; }
-})();
-const savedCaptions = (urlData && urlData.c) || (() => {
-  try { return JSON.parse(localStorage.getItem(CAPTIONS_KEY)); } catch(e) { return null; }
-})();
-
-for (let i = 1; i <= LOGO_COUNT; i++) {
-  logoStates[i] = (savedStates && savedStates[i]) ? { ...savedStates[i] } : { ...LOGO_DEFAULTS[i] };
-}
-captions = savedCaptions || {};
 
 function saveStates() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(logoStates)); } catch(e) {}
@@ -864,16 +853,72 @@ document.querySelectorAll('.value-display').forEach(span => {
 });
 
 // ─── Init ───
-buildGrid($('logoGrid'), selectLogo);
-buildGrid($('logoGridCompare'), selectCompareRight);
-buildSelect($('compareLeftSelect'), 1);
-buildSelect($('compareRightSelect'), 2);
+// 優先順位: URL hash > localStorage > defaults.json (repo) > FALLBACK_DEFAULTS
+async function loadTeamDefaults() {
+  try {
+    // cache-busting で最新の defaults.json を取得
+    const resp = await fetch('./defaults.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data && data.s && typeof data.s === 'object') {
+      for (let i = 1; i <= LOGO_COUNT; i++) {
+        if (data.s[i]) LOGO_DEFAULTS[i] = { ...FALLBACK_DEFAULTS, ...data.s[i] };
+      }
+    }
+    if (data && data.c && typeof data.c === 'object') {
+      teamCaptions = { ...data.c };
+    }
+  } catch(e) {
+    console.warn('defaults.json を読み込めませんでした。フォールバック値を使用します。', e);
+  }
+}
 
-selectLogo(1);
-selectCompareRight(2);
-syncUI();
-updateAllOverlays();
-setBg('#b0b0b0');
+async function init() {
+  await loadTeamDefaults();
+
+  // データ適用: URL hash > localStorage > team defaults
+  const urlData = parseURLData();
+  const savedStates = !urlData && (() => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(e) { return null; }
+  })();
+  const savedCaptions = !urlData && (() => {
+    try { return JSON.parse(localStorage.getItem(CAPTIONS_KEY)); } catch(e) { return null; }
+  })();
+
+  for (let i = 1; i <= LOGO_COUNT; i++) {
+    if (urlData && urlData.s && urlData.s[i]) logoStates[i] = { ...urlData.s[i] };
+    else if (savedStates && savedStates[i]) logoStates[i] = { ...savedStates[i] };
+    else logoStates[i] = { ...LOGO_DEFAULTS[i] };
+  }
+
+  if (urlData && urlData.c) captions = { ...urlData.c };
+  else if (savedCaptions) captions = savedCaptions;
+  else captions = { ...teamCaptions };
+
+  // UI 構築
+  buildGrid($('logoGrid'), selectLogo);
+  buildGrid($('logoGridCompare'), selectCompareRight);
+  buildSelect($('compareLeftSelect'), 1);
+  buildSelect($('compareRightSelect'), 2);
+  selectLogo(1);
+  selectCompareRight(2);
+  syncUI();
+  updateAllOverlays();
+  setBg('#b0b0b0');
+
+  // モバイル用: ロゴ選択後にドロワーを閉じる
+  document.querySelectorAll('#logoGrid .logo-thumb').forEach(thumb => {
+    thumb.addEventListener('click', () => {
+      if (window.innerWidth <= 860) {
+        setTimeout(() => {
+          $('sidebar').classList.remove('open');
+          $('sidebarBackdrop').classList.remove('open');
+        }, 150);
+      }
+    });
+  });
+}
+init();
 
 // ─── Caption edit ───
 $('captionEditToggle').addEventListener('click', toggleCaptionEdit);
@@ -940,7 +985,22 @@ $('shareBtn').addEventListener('click', () => {
   });
 });
 
-// ─── Export / Import captions ───
+// ─── Export defaults (team-wide) ───
+// 現在の logoStates + captions を defaults.json としてダウンロード。
+// リポジトリの v2/defaults.json を上書きコミットすれば、全員の初期値になる。
+$('exportDefaultsBtn').addEventListener('click', () => {
+  const payload = { s: logoStates, c: captions };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'defaults.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  flashShareMsg('defaults.json をダウンロードしました。リポジトリの v2/ に上書きコミットすれば全員の初期値になります。');
+});
+
+// ─── Export / Import captions only ───
 $('exportCaptionsBtn').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(captions, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -1084,8 +1144,8 @@ document.addEventListener('keydown', e => {
       selectLogo(current < LOGO_COUNT ? current + 1 : 1);
       break;
     case 'r': case 'R':
-      Object.assign(cur(), { ...DEFAULTS });
-      syncUI(); updateAllOverlays();
+      Object.assign(cur(), { ...LOGO_DEFAULTS[current] });
+      syncUI(); updateAllOverlays(); saveStates();
       break;
     case 'c': case 'C':
       setMode(mode === 'single' ? 'compare' : 'single');
@@ -1111,17 +1171,7 @@ $('sidebarBackdrop').addEventListener('click', () => {
   $('sidebar').classList.remove('open');
   $('sidebarBackdrop').classList.remove('open');
 });
-// Close sidebar after selecting on mobile
-document.querySelectorAll('#logoGrid .logo-thumb').forEach(thumb => {
-  thumb.addEventListener('click', () => {
-    if (window.innerWidth <= 860) {
-      setTimeout(() => {
-        $('sidebar').classList.remove('open');
-        $('sidebarBackdrop').classList.remove('open');
-      }, 150);
-    }
-  });
-});
+// ※ ロゴ選択後のドロワー自動クローズは init() 内（buildGrid の後）で登録
 
 // ─── Giscus comments ───
 // Giscus設定：コメント機能は GitHub Discussions を利用しています。

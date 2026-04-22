@@ -1,0 +1,21 @@
+{
+  "s": {
+    "1":  { "x": 73.5, "y": 62.5, "size": 7.5, "rotate": 1, "opacity": 100 },
+    "2":  { "x": 73.5, "y": 62.5, "size": 7.5, "rotate": 1, "opacity": 100 },
+    "3":  { "x": 73.5, "y": 62.5, "size": 7.5, "rotate": 1, "opacity": 100 },
+    "4":  { "x": 73.5, "y": 62.5, "size": 7.5, "rotate": 1, "opacity": 100 },
+    "5":  { "x": 73.5, "y": 62.5, "size": 7.5, "rotate": 1, "opacity": 100 },
+    "6":  { "x": 73.5, "y": 62.5, "size": 7.5, "rotate": 1, "opacity": 100 },
+    "7":  { "x": 73.5, "y": 62.5, "size": 7.5, "rotate": 1, "opacity": 100 },
+    "8":  { "x": 73.5, "y": 62.5, "size": 7.5, "rotate": 1, "opacity": 100 },
+    "9":  { "x": 73.5, "y": 62.5, "size": 7.5, "rotate": 1, "opacity": 100 },
+    "10": { "x": 73.5, "y": 62.5, "size": 7.5, "rotate": 1, "opacity": 100 },
+    "11": { "x": 73.5, "y": 62.5, "size": 7.5, "rotate": 1, "opacity": 100 },
+    "12": { "x": 73.5, "y": 62.5, "size": 7.5, "rotate": 1, "opacity": 100 },
+    "13": { "x": 73.5, "y": 62.5, "size": 7.5, "rotate": 1, "opacity": 100 },
+    "14": { "x": 73.5, "y": 62.5, "size": 7.5, "rotate": 1, "opacity": 100 },
+    "15": { "x": 73.5, "y": 62.5, "size": 7.5, "rotate": 1, "opacity": 100 },
+    "16": { "x": 73.5, "y": 62.5, "size": 7.5, "rotate": 1, "opacity": 100 }
+  },
+  "c": {}
+}
