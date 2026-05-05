@@ -574,16 +574,24 @@
 // ファイル名をそのまま参照。人間が読むラベルは LOGO_NAMES で編集可能。
 const LOGO_FILES = [
   'ryul_1.png', 'ryul_2.png', 'ryul_3.png', 'ryul_4.png',
-  'ryul_5.png', 'ryul_5_2.png', 'ryul_5_3.png', 'ryul_6.png',
+  'ryul_5.png', 'ryul_5-2.png', 'ryul_5-3.png', 'ryul_6.png',
   'ryul_7.png', 'ryul_8.png', 'ryul_9.png', 'ryul_10-10.png',
-  'ryul_10-11.png', 'ryul_12.png', 'ryul_12_2.png', 'ryul_13.png',
+  'ryul_10-11.png', 'ryul_12.png', 'ryul_12-2.png', 'ryul_13.png',
   'ryul_14.png', 'ryul_15.png', 'ryul_16.png'
+];
+// Display label per slot (the number badge / dropdown). Sub-numbered slots use hyphenated labels.
+const LOGO_LABELS = [
+  '1', '2', '3', '4',
+  '5', '5-2', '5-3', '6',
+  '7', '8', '9', '10-10',
+  '10-11', '12', '12-2', '13',
+  '14', '15', '16'
 ];
 const LOGO_NAMES = [
   'ryul 1', 'ryul 2', 'ryul 3', 'ryul 4',
-  'ryul 5', 'ryul 5_2', 'ryul 5_3', 'ryul 6',
+  'ryul 5', 'ryul 5-2', 'ryul 5-3', 'ryul 6',
   'ryul 7', 'ryul 8', 'ryul 9', 'ryul 10-10',
-  'ryul 10-11', 'ryul 12', 'ryul 12_2', 'ryul 13',
+  'ryul 10-11', 'ryul 12', 'ryul 12-2', 'ryul 13',
   'ryul 14', 'ryul 15', 'ryul 16'
 ];
 const LOGO_COUNT = LOGO_FILES.length;
@@ -649,7 +657,7 @@ function buildGrid(container, onClick) {
     const div = document.createElement('div');
     div.className = 'logo-thumb';
     div.dataset.logo = i;
-    div.innerHTML = '<span class="num">' + i + '</span><img src="' + logoSrc(i) + '" alt="Logo ' + i + '">';
+    div.innerHTML = '<span class="num">' + LOGO_LABELS[i-1] + '</span><img src="' + logoSrc(i) + '" alt="Logo ' + LOGO_LABELS[i-1] + '">';
     div.addEventListener('click', () => onClick(i));
     container.appendChild(div);
   }
@@ -660,7 +668,7 @@ function buildSelect(sel, selected) {
   for (let i = 1; i <= LOGO_COUNT; i++) {
     const opt = document.createElement('option');
     opt.value = i;
-    opt.textContent = i + '. ' + LOGO_NAMES[i-1];
+    opt.textContent = LOGO_LABELS[i-1] + '. ' + LOGO_NAMES[i-1];
     if (i === selected) opt.selected = true;
     sel.appendChild(opt);
   }
@@ -733,7 +741,7 @@ function syncUI() {
   $('logoSize').value = st.size; $('logoSizeVal').textContent = st.size + '%';
   $('logoRotate').value = st.rotate; $('logoRotateVal').textContent = st.rotate + '°';
   $('logoOpacity').value = st.opacity; $('logoOpacityVal').textContent = st.opacity + '%';
-  $('adjustLabel').textContent = 'Logo ' + current + ': ' + LOGO_NAMES[current-1];
+  $('adjustLabel').textContent = 'Logo ' + LOGO_LABELS[current-1] + ': ' + LOGO_NAMES[current-1];
   updateCaptionUI();
 }
 
@@ -764,7 +772,7 @@ function selectLogo(n) {
   document.querySelectorAll('#logoGrid .logo-thumb').forEach(el => {
     el.classList.toggle('active', parseInt(el.dataset.logo) === n);
   });
-  $('statusLeft').textContent = 'Logo ' + n + ': ' + LOGO_NAMES[n-1];
+  $('statusLeft').textContent = 'Logo ' + LOGO_LABELS[n-1] + ': ' + LOGO_NAMES[n-1];
   syncUI();
   updateAllOverlays();
 
