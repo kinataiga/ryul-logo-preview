@@ -630,11 +630,33 @@ function saveCaptions() {
   try { localStorage.setItem(CAPTIONS_KEY, JSON.stringify(captions)); } catch(e) {}
 }
 
+// Build a share URL that contains only the DIFF from team defaults.
+// Slots/captions matching defaults are omitted entirely. If nothing differs,
+// the URL has no hash at all.
 function getShareURL() {
   const base = window.location.origin + window.location.pathname;
-  const payload = { s: logoStates, c: captions };
-  const hash = encodeURIComponent(JSON.stringify(payload));
-  return base + '#' + hash;
+  const sDiff = {};
+  for (let i = 1; i <= LOGO_COUNT; i++) {
+    const cur = logoStates[i];
+    const def = LOGO_DEFAULTS[i] || FALLBACK_DEFAULTS;
+    if (!cur) continue;
+    const slot = {};
+    if (cur.x !== def.x) slot.x = cur.x;
+    if (cur.y !== def.y) slot.y = cur.y;
+    if (cur.size !== def.size) slot.size = cur.size;
+    if (cur.rotate !== def.rotate) slot.rotate = cur.rotate;
+    if (cur.opacity !== def.opacity) slot.opacity = cur.opacity;
+    if (Object.keys(slot).length > 0) sDiff[i] = slot;
+  }
+  const cDiff = {};
+  for (const k in captions) {
+    if (captions[k] !== teamCaptions[k]) cDiff[k] = captions[k];
+  }
+  const payload = {};
+  if (Object.keys(sDiff).length > 0) payload.s = sDiff;
+  if (Object.keys(cDiff).length > 0) payload.c = cDiff;
+  if (Object.keys(payload).length === 0) return base;
+  return base + '#' + encodeURIComponent(JSON.stringify(payload));
 }
 
 // ─── State ───
@@ -896,13 +918,14 @@ async function init() {
   })();
 
   for (let i = 1; i <= LOGO_COUNT; i++) {
-    if (urlData && urlData.s && urlData.s[i]) logoStates[i] = { ...urlData.s[i] };
-    else if (savedStates && savedStates[i]) logoStates[i] = { ...savedStates[i] };
+    // Merge defaults with URL/local diff so partial payloads work.
+    if (urlData && urlData.s && urlData.s[i]) logoStates[i] = { ...LOGO_DEFAULTS[i], ...urlData.s[i] };
+    else if (savedStates && savedStates[i]) logoStates[i] = { ...LOGO_DEFAULTS[i], ...savedStates[i] };
     else logoStates[i] = { ...LOGO_DEFAULTS[i] };
   }
 
-  if (urlData && urlData.c) captions = { ...urlData.c };
-  else if (savedCaptions) captions = savedCaptions;
+  if (urlData && urlData.c) captions = { ...teamCaptions, ...urlData.c };
+  else if (savedCaptions) captions = { ...teamCaptions, ...savedCaptions };
   else captions = { ...teamCaptions };
 
   // UI 構築
