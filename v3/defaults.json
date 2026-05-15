@@ -12,10 +12,7 @@
     "10": { "x": 72, "y": 61.5, "size": 9, "rotate": 22.5, "opacity": 100 },
     "11": { "x": 72, "y": 61.5, "size": 9, "rotate": 22.5, "opacity": 100 },
     "12": { "x": 72, "y": 61.5, "size": 9, "rotate": 22.5, "opacity": 100 },
-    "13": { "x": 72, "y": 61.5, "size": 9, "rotate": 22.5, "opacity": 100 },
-    "14": { "x": 72, "y": 61.5, "size": 9, "rotate": 22.5, "opacity": 100 },
-    "15": { "x": 72, "y": 61.5, "size": 9, "rotate": 22.5, "opacity": 100 },
-    "16": { "x": 72, "y": 61.5, "size": 9, "rotate": 22.5, "opacity": 100 }
+    "13": { "x": 72, "y": 61.5, "size": 9, "rotate": 22.5, "opacity": 100 }
   },
   "c": {}
 }
