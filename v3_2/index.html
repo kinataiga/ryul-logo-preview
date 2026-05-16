@@ -315,12 +315,14 @@
     mask-image: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.6) 100%);
   }
 
-  /* Black Chrome: 白ロゴを反転して濃い黒に落とし、Chrome と同じ斜めマスクで
-     金属光沢のハイライト帯を演出。コントラストを強めにとって #111〜#555 のレンジを狙う。 */
+  /* Black Chrome: Pixel 背面の G ロゴのような「ダークなポリッシュドメタル」を狙う。
+     - invert(1) で白→黒へ、brightness/contrast はやや控えめにして中明度のダークグレー帯（#3a〜#5a）
+     - マスクは縦方向のスムーズなグラデのみ（Chrome のような鋭いハイライト帯は使わない）。
+       上端：弱いハイライト（環境光の映り込み）／中央：最も暗い「地」／下端：わずかに持ち上げてベゼル感 */
   .logo-overlay.mirror-black-chrome img {
-    filter: invert(1) brightness(0.9) contrast(1.55);
-    -webkit-mask-image: linear-gradient(175deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,1) 12%, rgba(0,0,0,0.3) 38%, rgba(0,0,0,1) 52%, rgba(0,0,0,0.95) 65%, rgba(0,0,0,0.35) 78%, rgba(0,0,0,1) 92%, rgba(0,0,0,0.9) 100%);
-    mask-image: linear-gradient(175deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,1) 12%, rgba(0,0,0,0.3) 38%, rgba(0,0,0,1) 52%, rgba(0,0,0,0.95) 65%, rgba(0,0,0,0.35) 78%, rgba(0,0,0,1) 92%, rgba(0,0,0,0.9) 100%);
+    filter: invert(1) brightness(0.68) contrast(1.18);
+    -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.78) 22%, rgba(0,0,0,1) 55%, rgba(0,0,0,0.94) 80%, rgba(0,0,0,0.88) 100%);
+    mask-image: linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.78) 22%, rgba(0,0,0,1) 55%, rgba(0,0,0,0.94) 80%, rgba(0,0,0,0.88) 100%);
   }
 
   /* ─── Comments section ─── */
