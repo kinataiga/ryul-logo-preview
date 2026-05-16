@@ -658,28 +658,68 @@ function saveCaptions() {
 // Slots/captions matching defaults are omitted entirely.
 // UI state (現在選択中のロゴ / Logo Effect / Background / Mode / Compare 右) も
 // デフォルトと異なる場合のみ含めて、受け取り側が同じ見た目で開けるようにする。
+//
+// URL 短縮ロジック: batch 編集で多くのロゴが同じ値を持つケースが多いため、
+//   1. 各プロパティ (x / y / size / rotate / opacity) ごとに「最多の差分値」を求める
+//   2. その値が半分以上のロゴで共通なら sa（slot-all）に持ち上げて全スロットの新しい基準にする
+//   3. 残った例外スロットだけ s で個別オーバーライドする
+// これで「全13ロゴを batch で同じ値に動かした」ケースが sa 1個に集約され、URL が劇的に短くなる。
 function getShareURL() {
   const base = window.location.origin + window.location.pathname;
+  const propKeys = ['x', 'y', 'size', 'rotate', 'opacity'];
+
+  // 1. 各スロットの diff (vs team defaults) を素直に計算
+  const rawDiffs = {};
+  for (let i = 1; i <= LOGO_COUNT; i++) {
+    const cur = logoStates[i];
+    const def = LOGO_DEFAULTS[i] || FALLBACK_DEFAULTS;
+    if (!cur) continue;
+    const slot = {};
+    for (const key of propKeys) {
+      if (cur[key] !== def[key]) slot[key] = cur[key];
+    }
+    if (Object.keys(slot).length > 0) rawDiffs[i] = slot;
+  }
+
+  // 2. プロパティごとに最多の差分値を求めて sa に持ち上げる
+  const sa = {};
+  for (const key of propKeys) {
+    const counts = {};
+    for (let i = 1; i <= LOGO_COUNT; i++) {
+      const v = rawDiffs[i] ? rawDiffs[i][key] : undefined;
+      if (v === undefined) continue;
+      counts[v] = (counts[v] || 0) + 1;
+    }
+    let modeVal, modeCount = 0;
+    for (const v in counts) {
+      if (counts[v] > modeCount) { modeCount = counts[v]; modeVal = parseFloat(v); }
+    }
+    // 全ロゴの過半数（かつ 3 件以上）が同じ値を持つ場合だけ持ち上げる
+    if (modeCount >= Math.ceil(LOGO_COUNT / 2) && modeCount >= 3) sa[key] = modeVal;
+  }
+
+  // 3. sa 適用後の「実効デフォルト」に対して再度 diff を取り、例外だけ s に残す
   const sDiff = {};
   for (let i = 1; i <= LOGO_COUNT; i++) {
     const cur = logoStates[i];
     const def = LOGO_DEFAULTS[i] || FALLBACK_DEFAULTS;
     if (!cur) continue;
     const slot = {};
-    if (cur.x !== def.x) slot.x = cur.x;
-    if (cur.y !== def.y) slot.y = cur.y;
-    if (cur.size !== def.size) slot.size = cur.size;
-    if (cur.rotate !== def.rotate) slot.rotate = cur.rotate;
-    if (cur.opacity !== def.opacity) slot.opacity = cur.opacity;
+    for (const key of propKeys) {
+      const effectiveDef = (sa[key] !== undefined) ? sa[key] : def[key];
+      if (cur[key] !== effectiveDef) slot[key] = cur[key];
+    }
     if (Object.keys(slot).length > 0) sDiff[i] = slot;
   }
+
   const cDiff = {};
   for (const k in captions) {
     if (captions[k] !== teamCaptions[k]) cDiff[k] = captions[k];
   }
   const payload = {};
-  if (Object.keys(sDiff).length > 0) payload.s = sDiff;
-  if (Object.keys(cDiff).length > 0) payload.c = cDiff;
+  if (Object.keys(sa).length > 0)    payload.sa = sa;
+  if (Object.keys(sDiff).length > 0) payload.s  = sDiff;
+  if (Object.keys(cDiff).length > 0) payload.c  = cDiff;
   // UI state (defaults と異なるときのみ追加)
   if (current !== 1) payload.n = current;
   if (logoEffect !== 'normal') payload.e = logoEffect;
@@ -953,10 +993,13 @@ async function init() {
     try { return JSON.parse(localStorage.getItem(CAPTIONS_KEY)); } catch(e) { return null; }
   })() : null;
 
+  // sa（slot-all）があれば全スロットの基準値として team defaults に重ね、その上で s の個別差分を適用する
+  const urlSa = (urlData && urlData.sa) ? urlData.sa : {};
   for (let i = 1; i <= LOGO_COUNT; i++) {
     // Merge defaults with URL/local diff so partial payloads work.
-    if (urlData && urlData.s && urlData.s[i]) logoStates[i] = { ...LOGO_DEFAULTS[i], ...urlData.s[i] };
-    else if (savedStates && savedStates[i]) logoStates[i] = { ...LOGO_DEFAULTS[i], ...savedStates[i] };
+    if (urlData && (urlData.s && urlData.s[i] || Object.keys(urlSa).length > 0)) {
+      logoStates[i] = { ...LOGO_DEFAULTS[i], ...urlSa, ...((urlData.s && urlData.s[i]) || {}) };
+    } else if (savedStates && savedStates[i]) logoStates[i] = { ...LOGO_DEFAULTS[i], ...savedStates[i] };
     else logoStates[i] = { ...LOGO_DEFAULTS[i] };
   }
 
