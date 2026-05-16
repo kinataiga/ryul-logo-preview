@@ -627,13 +627,22 @@ const CAPTIONS_KEY = 'ryul-logo-preview-v3_2-captions';
 const logoStates = {};
 let captions = {}; // { [logoIndex]: "caption text" }
 
-// Parse URL hash — supports both old (states only) and new (states + captions)
+// Parse URL hash. 受け入れる payload:
+//   { s, c, n, e, bg, m, r }
+//   s = 位置差分 / c = キャプション差分 / n = current logo / e = logo effect
+//   bg = background color / m = mode (single|compare) / r = compareRight
+// 旧形式（位置だけのベアオブジェクト）も { s: parsed } として読む。
 function parseURLData() {
   try {
     const hash = window.location.hash.slice(1);
     if (!hash) return null;
     const parsed = JSON.parse(decodeURIComponent(hash));
-    if (parsed && typeof parsed === 'object' && 's' in parsed) return parsed;
+    if (!parsed || typeof parsed !== 'object') return null;
+    // 新形式: 既知のキーが少なくとも 1 つあれば、そのまま採用
+    if ('s' in parsed || 'c' in parsed || 'n' in parsed || 'e' in parsed || 'bg' in parsed || 'm' in parsed || 'r' in parsed) {
+      return parsed;
+    }
+    // 旧形式（v2 era）: ベアな位置オブジェクト
     return { s: parsed, c: null };
   } catch(e) { return null; }
 }
@@ -932,13 +941,17 @@ async function init() {
   await loadTeamDefaults();
 
   // データ適用: URL hash > localStorage > team defaults
+  // URL に positions/captions が入っているときだけ local を無視する。
+  // effect/bg/mode/current だけの "view-only" URL を踏んでも、自分のローカル位置調整は維持される。
   const urlData = parseURLData();
-  const savedStates = !urlData && (() => {
+  const urlHasPositions = !!(urlData && urlData.s);
+  const urlHasCaptions  = !!(urlData && urlData.c);
+  const savedStates = !urlHasPositions ? (() => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(e) { return null; }
-  })();
-  const savedCaptions = !urlData && (() => {
+  })() : null;
+  const savedCaptions = !urlHasCaptions ? (() => {
     try { return JSON.parse(localStorage.getItem(CAPTIONS_KEY)); } catch(e) { return null; }
-  })();
+  })() : null;
 
   for (let i = 1; i <= LOGO_COUNT; i++) {
     // Merge defaults with URL/local diff so partial payloads work.
