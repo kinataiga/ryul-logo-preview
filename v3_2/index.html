@@ -646,8 +646,9 @@ function saveCaptions() {
 }
 
 // Build a share URL that contains only the DIFF from team defaults.
-// Slots/captions matching defaults are omitted entirely. If nothing differs,
-// the URL has no hash at all.
+// Slots/captions matching defaults are omitted entirely.
+// UI state (現在選択中のロゴ / Logo Effect / Background / Mode / Compare 右) も
+// デフォルトと異なる場合のみ含めて、受け取り側が同じ見た目で開けるようにする。
 function getShareURL() {
   const base = window.location.origin + window.location.pathname;
   const sDiff = {};
@@ -670,7 +671,14 @@ function getShareURL() {
   const payload = {};
   if (Object.keys(sDiff).length > 0) payload.s = sDiff;
   if (Object.keys(cDiff).length > 0) payload.c = cDiff;
-  if (Object.keys(payload).length === 0) return base;
+  // UI state (defaults と異なるときのみ追加)
+  if (current !== 1) payload.n = current;
+  if (logoEffect !== 'normal') payload.e = logoEffect;
+  if (bg !== '#b0b0b0') payload.bg = bg;
+  if (mode !== 'single') payload.m = mode;
+  if (compareRight !== 2) payload.r = compareRight;
+  // 必ず hash 付き URL を返す（共有用途では空ハッシュだと「コピーした意味が無い」ため、
+  // payload が空でも明示的に空オブジェクトを載せる）
   return base + '#' + encodeURIComponent(JSON.stringify(payload));
 }
 
@@ -943,16 +951,35 @@ async function init() {
   else if (savedCaptions) captions = { ...teamCaptions, ...savedCaptions };
   else captions = { ...teamCaptions };
 
+  // UI state を URL hash から復元（指定がなければ既定値のまま）
+  const initialCurrent      = (urlData && urlData.n)  ? parseInt(urlData.n)  : 1;
+  const initialCompareRight = (urlData && urlData.r)  ? parseInt(urlData.r)  : 2;
+  const initialEffect       = (urlData && urlData.e)  ? urlData.e            : 'normal';
+  const initialBg           = (urlData && urlData.bg) ? urlData.bg           : '#b0b0b0';
+  const initialMode         = (urlData && urlData.m)  ? urlData.m            : 'single';
+
   // UI 構築
   buildGrid($('logoGrid'), selectLogo);
   buildGrid($('logoGridCompare'), selectCompareRight);
-  buildSelect($('compareLeftSelect'), 1);
-  buildSelect($('compareRightSelect'), 2);
-  selectLogo(1);
-  selectCompareRight(2);
+  buildSelect($('compareLeftSelect'), initialCurrent);
+  buildSelect($('compareRightSelect'), initialCompareRight);
+  selectLogo(initialCurrent);
+  selectCompareRight(initialCompareRight);
+
+  // Logo Effect を反映（ボタンの active 状態と内部変数）
+  if (initialEffect !== 'normal') {
+    logoEffect = initialEffect;
+    document.querySelectorAll('[data-effect]').forEach(b => {
+      b.classList.toggle('active', b.dataset.effect === initialEffect);
+    });
+  }
+
+  // Mode を反映（compare に切り替える場合のみ setMode を呼ぶ）
+  if (initialMode === 'compare') setMode('compare');
+
   syncUI();
   updateAllOverlays();
-  setBg('#b0b0b0');
+  setBg(initialBg);
 
   // モバイル用: ロゴ選択後にドロワーを閉じる
   document.querySelectorAll('#logoGrid .logo-thumb').forEach(thumb => {
