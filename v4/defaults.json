@@ -10,7 +10,9 @@
     "8":  { "x": 72, "y": 61.5, "size": 9, "rotate": 22.5, "opacity": 100 },
     "9":  { "x": 72, "y": 61.5, "size": 9, "rotate": 22.5, "opacity": 100 },
     "10": { "x": 72, "y": 61.5, "size": 9, "rotate": 22.5, "opacity": 100 },
-    "11": { "x": 72, "y": 61.5, "size": 9, "rotate": 22.5, "opacity": 100 }
+    "11": { "x": 72, "y": 61.5, "size": 9, "rotate": 22.5, "opacity": 100 },
+    "12": { "x": 72, "y": 61.5, "size": 9, "rotate": 22.5, "opacity": 100 },
+    "13": { "x": 72, "y": 61.5, "size": 9, "rotate": 22.5, "opacity": 100 }
   },
   "c": {}
 }
