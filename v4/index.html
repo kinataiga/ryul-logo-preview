@@ -655,6 +655,31 @@ function saveCaptions() {
   try { localStorage.setItem(CAPTIONS_KEY, JSON.stringify(captions)); } catch(e) {}
 }
 
+// ─── URL 短縮: プロパティキー / Effect の短縮マッピング ───
+// x, y は元から 1 文字なので、size / rotate / opacity だけ短縮する。
+// Effect は mirror- プレフィックスや長い名前が URL を肥大化させるので 1 文字に圧縮。
+// 旧 URL（長い名前のまま）も読めるよう、unpack は短形→長形 / 長形→そのまま を許容。
+const PROP_PACK   = { x: 'x', y: 'y', size: 'z', rotate: 'r', opacity: 'o' };
+const PROP_UNPACK = { z: 'size', r: 'rotate', o: 'opacity' };
+const EFFECT_PACK = {
+  'invert': 'I', 'mirror-silver': 'S', 'mirror-black': 'B',
+  'mirror-chrome': 'C', 'mirror-black-chrome': 'K', 'mirror-engrave': 'E'
+};
+const EFFECT_UNPACK = {
+  'I': 'invert', 'S': 'mirror-silver', 'B': 'mirror-black',
+  'C': 'mirror-chrome', 'K': 'mirror-black-chrome', 'E': 'mirror-engrave'
+};
+function packSlot(slot) {
+  const out = {};
+  for (const k in slot) out[PROP_PACK[k] || k] = slot[k];
+  return out;
+}
+function unpackSlot(slot) {
+  const out = {};
+  for (const k in slot) out[PROP_UNPACK[k] || k] = slot[k];
+  return out;
+}
+
 // Build a share URL that contains only the DIFF from team defaults.
 // Slots/captions matching defaults are omitted entirely.
 // UI state (現在選択中のロゴ / Logo Effect / Background / Mode / Compare 右) も
@@ -718,14 +743,22 @@ function getShareURL() {
     if (captions[k] !== teamCaptions[k]) cDiff[k] = captions[k];
   }
   const payload = {};
-  if (Object.keys(sa).length > 0)    payload.sa = sa;
-  if (Object.keys(sDiff).length > 0) payload.s  = sDiff;
-  if (Object.keys(cDiff).length > 0) payload.c  = cDiff;
-  // UI state (defaults と異なるときのみ追加)
+  // sa / s は packSlot でプロパティキーを 1 文字に圧縮
+  if (Object.keys(sa).length > 0)    payload.sa = packSlot(sa);
+  if (Object.keys(sDiff).length > 0) {
+    payload.s = {};
+    for (const i in sDiff) payload.s[i] = packSlot(sDiff[i]);
+  }
+  if (Object.keys(cDiff).length > 0) payload.c = cDiff;
+  // UI state (defaults と異なるときのみ追加)。effect / mode / bg も短縮形に
   if (current !== 1) payload.n = current;
-  if (logoEffect !== 'normal') payload.e = logoEffect;
-  if (bg !== '#b0b0b0') payload.bg = bg;
-  if (mode !== 'single') payload.m = mode;
+  if (logoEffect !== 'normal') payload.e = EFFECT_PACK[logoEffect] || logoEffect;
+  // bg は #RRGGBB のうち各チャネルが同じ文字 2 つなら #RGB に短縮（例: #ffffff → #fff）
+  if (bg !== '#b0b0b0') {
+    const m = /^#([0-9a-f])\1([0-9a-f])\2([0-9a-f])\3$/i.exec(bg);
+    payload.bg = m ? ('#' + m[1] + m[2] + m[3]) : bg;
+  }
+  if (mode !== 'single') payload.m = (mode === 'compare') ? 'c' : mode;
   if (compareRight !== 2) payload.r = compareRight;
   // 必ず hash 付き URL を返す（共有用途では空ハッシュだと「コピーした意味が無い」ため、
   // payload が空でも明示的に空オブジェクトを載せる）
@@ -995,11 +1028,13 @@ async function init() {
   })() : null;
 
   // sa（slot-all）があれば全スロットの基準値として team defaults に重ね、その上で s の個別差分を適用する
-  const urlSa = (urlData && urlData.sa) ? urlData.sa : {};
+  // sa は packSlot で短縮されていることがあるため unpack してから適用
+  const urlSa = (urlData && urlData.sa) ? unpackSlot(urlData.sa) : {};
   for (let i = 1; i <= LOGO_COUNT; i++) {
     // Merge defaults with URL/local diff so partial payloads work.
     if (urlData && (urlData.s && urlData.s[i] || Object.keys(urlSa).length > 0)) {
-      logoStates[i] = { ...LOGO_DEFAULTS[i], ...urlSa, ...((urlData.s && urlData.s[i]) || {}) };
+      const slotDiff = (urlData.s && urlData.s[i]) ? unpackSlot(urlData.s[i]) : {};
+      logoStates[i] = { ...LOGO_DEFAULTS[i], ...urlSa, ...slotDiff };
     } else if (savedStates && savedStates[i]) logoStates[i] = { ...LOGO_DEFAULTS[i], ...savedStates[i] };
     else logoStates[i] = { ...LOGO_DEFAULTS[i] };
   }
@@ -1008,12 +1043,17 @@ async function init() {
   else if (savedCaptions) captions = { ...teamCaptions, ...savedCaptions };
   else captions = { ...teamCaptions };
 
+  // bg の #RGB → #RRGGBB 展開（packSlot 側で #RGB に圧縮されているケース）
+  function expandBg(s) {
+    const m = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(s);
+    return m ? ('#' + m[1] + m[1] + m[2] + m[2] + m[3] + m[3]) : s;
+  }
   // UI state を URL hash から復元（指定がなければ既定値のまま）
   const initialCurrent      = (urlData && urlData.n)  ? parseInt(urlData.n)  : 1;
   const initialCompareRight = (urlData && urlData.r)  ? parseInt(urlData.r)  : 2;
-  const initialEffect       = (urlData && urlData.e)  ? urlData.e            : 'normal';
-  const initialBg           = (urlData && urlData.bg) ? urlData.bg           : '#b0b0b0';
-  const initialMode         = (urlData && urlData.m)  ? urlData.m            : 'single';
+  const initialEffect       = (urlData && urlData.e)  ? (EFFECT_UNPACK[urlData.e] || urlData.e) : 'normal';
+  const initialBg           = (urlData && urlData.bg) ? expandBg(urlData.bg)  : '#b0b0b0';
+  const initialMode         = (urlData && urlData.m)  ? (urlData.m === 'c' ? 'compare' : urlData.m) : 'single';
 
   // UI 構築
   buildGrid($('logoGrid'), selectLogo);
